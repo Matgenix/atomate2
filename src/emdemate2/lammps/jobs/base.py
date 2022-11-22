@@ -6,6 +6,10 @@ from jobflow import Maker, Response, job
 from monty.serialization import dumpfn
 from monty.shutil import gzip_dir
 from pymatgen.core import Structure
+from pymatgen.io.lammps_new.sets import BaseLammpsGenerator
+
+from ..files import write_lammps_input_set
+from ..schemas.task import TaskDocument
 
 _DATA_OBJECTS = []
 
@@ -14,29 +18,14 @@ __all__ = ("BaseLammpsMaker", "lammps_job")
 from ..run import run_lammps
 
 
-class LammpsInputGenerator:
-    ...
-
-
-class TaskDocument:
-    ...
-
-
-def write_lammps_input_set():
-    ...
-
-
 def lammps_job(method: Callable):
     return job(method, data=_DATA_OBJECTS, output_schema=TaskDocument)
-
 
 
 @dataclass
 class BaseLammpsMaker(Maker):
     name: str = "Base LAMMPS job"
-    input_set_generator: LammpsInputGenerator = field(
-        default_factory=LammpsInputGenerator
-    )
+    input_set_generator: BaseLammpsGenerator = field(default_factory=BaseLammpsGenerator)
     write_input_set_kwargs: dict = field(default_factory=dict)
     run_lammps_kwargs: dict = field(default_factory=dict)
     task_document_kwargs: dict = field(default_factory=dict)
@@ -46,11 +35,12 @@ class BaseLammpsMaker(Maker):
     def make(self, input_structure: Structure | Path):
         """Run a LAMMPS calculation."""
 
-        write_lammps_input_set(input_structure, self.input_set_generator, **self.write_input_set_kwargs)
+        write_lammps_input_set(
+            input_structure, self.input_set_generator, **self.write_input_set_kwargs
+        )
 
         for filename, data in self.write_additional_data.items():
             dumpfn(data, filename.replace(":", "."))
-
 
         run_lammps(**self.run_lammps_kwargs)
 
@@ -65,4 +55,4 @@ class BaseLammpsMaker(Maker):
 @dataclass
 class LammpsMaker(BaseLammpsMaker):
     name: str = "Simple LAMMPS job"
-    input_set_generator: LammpsInputGenerator = field(default_factory=LammpsInputGenerator)
+    input_set_generator: BaseLammpsGenerator = field(default_factory=BaseLammpsGenerator)

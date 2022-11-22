@@ -1,8 +1,3 @@
-from pymatgen.core.io import InputGenerator, InputSet
+from pymatgen.io.lammps_new.sets import LammpsInputSet
 
-class LammpsInputSet(InputSet):
-    ...
-
-class LammpsInputGenerator(InputGenerator):
-    ...
-    
+__all__ = "LammpsInputSet"

@@ -1,38 +1,7 @@
 import subprocess
+from pathlib import Path
 
-from pydantic import BaseSettings, Field
-
-
-class LammpsSettings(BaseSettings):
-
-    LAMMPS_CMD: str = Field("lmp", description="The command to run LAMMPS.")
-    LAMMPS_SUFFIX: list[str] | str | None = Field(
-        None,
-        description=(
-            "The LAMMPS style suffix(es) to use."
-            "See https://docs.lammps.org/Run_options.html#suffix for more information."
-        ),
-        examples=["gpu", "kk", "intel", "omp", "opt", [["gpu", "kk"]]],
-    )
-    LAMMPS_PACKAGES: list[str] | str | None = Field(
-        None,
-        description=(
-            "Options to pass to the package command-line flag that controls subpackage "
-            "styles and parameters, e.g., `'gpu 1'` will call `lmp -pk gpu 1` will tell "
-            "LAMMPS to use 1 GPU for this calculation. "
-            "List values are passed with separate '-pk' invocations, e.g., `lmp -pk gpu 1 -pk omp 4`."
-            "See https://docs.lammps.org/Run_options.html#package for more information."
-        ),
-        examples=["gpu 0", "gpu 1 split 0.75", "gpu 2 split -1.0", "gpu 1 omp 4"],
-    )
-    MPI_CMD: str = Field("mpirun", description="The command to invoke MPI.")
-    MPI_NUM_PROCESSES_FLAG: str = Field(
-        "-n",
-        description="The flag with which to provide the number of processes to use in the MPI execution.",
-    )
-
-
-LAMMPS_SETTINGS = LammpsSettings()
+from .settings import LAMMPS_SETTINGS
 
 
 def run_lammps(
@@ -45,7 +14,9 @@ def run_lammps(
     mpi_num_processes: int = 1,
     mpi_num_processes_flag: str = LAMMPS_SETTINGS.MPI_NUM_PROCESSES_FLAG,
     max_walltime_hours: float | None = None,
-) -> None:
+    stdout_file: str | Path = "stdout.log",
+    stderr_file: str | Path = "stderr.log",
+) -> subprocess.Popen:
     """Run LAMMPS.
 
     Parameters:
@@ -67,6 +38,8 @@ def run_lammps(
             be made to cleanly end the calculation after this amount of time. Note: if using with a queueing system,
             this value should leave suffcient time for the clean-up of the calculation within the maximum walltime
             allocated to the job by the queue.
+        stdout_file: The name of or path to a file in which to save the stdout stream.
+        stderr_file: The name of or path to a file in which to save the stderr stream.
 
     """
 
@@ -101,14 +74,9 @@ def run_lammps(
 
     lammps_invocation.extend([lammps_cmd, "-in", lammps_input_file])
 
-    with open("stdout.log", "a") as stdout, open("stderr.log", "a") as stderr:
-        process = subprocess.Popen(
+    with open(stdout_file, "a") as stdout, open(stderr_file, "a") as stderr:
+        return subprocess.Popen(
             lammps_invocation,
             stdout=stdout,
             stderr=stderr,
         )
-
-        try:
-            process.communicate(timeout=max_walltime_hours)
-        except subprocess.TimeoutExpired:
-            process.terminate()
