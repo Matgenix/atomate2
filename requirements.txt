@@ -1,0 +1,8 @@
+jobflow
+fireworks
+paramiko
+fabric
+requests
+matplotlib
+pymatgen
+atomate2
